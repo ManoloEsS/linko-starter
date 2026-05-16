@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	pkgerr "github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -33,8 +34,7 @@ func (s *server) authMiddleware(next http.Handler) http.Handler {
 		}
 		ok, err := s.validatePassword(password, stored)
 		if err != nil {
-			s.logger.Error("error validating password", "username", username, "error", err)
-
+			s.logger.Error("error validating password", "user", username, "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -50,11 +50,10 @@ func (s *server) authMiddleware(next http.Handler) http.Handler {
 func (s *server) validatePassword(password, stored string) (bool, error) {
 	err := bcrypt.CompareHashAndPassword([]byte(stored), []byte(password))
 	if err == bcrypt.ErrMismatchedHashAndPassword {
-		return false, nil
+		return false, err
 	}
 	if err != nil {
-		s.logger.Error("error validating password", "error", err)
-		return false, err
+		return false, pkgerr.WithStack(err)
 	}
 	return true, nil
 }
