@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"boot.dev/linko/internal/store"
+	"github.com/ManoloEsS/linko/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
 
