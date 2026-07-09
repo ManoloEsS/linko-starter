@@ -31,6 +31,7 @@ const logContextKey contextKey = "log_context"
 
 type LogContext struct {
 	Username string
+	Error    error
 }
 
 type server struct {
