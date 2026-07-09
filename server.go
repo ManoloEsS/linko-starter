@@ -146,6 +146,10 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 				attrs = append(attrs, slog.String("user", logCtx.Username))
 			}
 
+			if logCtx.Error != nil {
+				attrs = append(attrs, slog.Any("error", logCtx.Error))
+			}
+
 			logger.Info("Served request", attrs...)
 		})
 	}
