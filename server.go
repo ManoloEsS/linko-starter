@@ -4,13 +4,34 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/ManoloEsS/linko/internal/store"
 )
+
+// for use with the r.Body in the requestLogger middleware
+type spyReadCloser struct {
+	io.ReadCloser
+	bytesRead int
+}
+
+// for use with the w in the requestLogger middleware
+type spyResponseWriter struct {
+	http.ResponseWriter
+	bytesWritten int
+	statusCode   int
+}
+
+const logContextKey contextKey = "log_context"
+
+type LogContext struct {
+	Username string
+}
 
 type server struct {
 	httpServer *http.Server
@@ -76,15 +97,55 @@ func (s *server) handlerShutdown(w http.ResponseWriter, r *http.Request) {
 	go s.cancel()
 }
 
+func (r *spyReadCloser) Read(p []byte) (int, error) {
+	n, err := r.ReadCloser.Read(p)
+	r.bytesRead += n
+	return n, err
+}
+
+func (w *spyResponseWriter) Write(p []byte) (int, error) {
+	if w.statusCode == 0 {
+		w.statusCode = http.StatusOK
+	}
+
+	n, err := w.ResponseWriter.Write(p)
+	w.bytesWritten += n
+	return n, err
+}
+
+func (w *spyResponseWriter) WriteHeader(statusCode int) {
+	w.statusCode = statusCode
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
 func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r)
-			logger.Info("Served request",
+			start := time.Now()
+			logCtx := &LogContext{}
+			r = r.WithContext(context.WithValue(r.Context(), logContextKey, logCtx))
+			spyReader := &spyReadCloser{ReadCloser: r.Body}
+			spyWriter := &spyResponseWriter{ResponseWriter: w}
+
+			r.Body = spyReader
+
+			next.ServeHTTP(spyWriter, r)
+
+			attrs := []any{
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
 				slog.String("client_ip", r.RemoteAddr),
-			)
+				slog.Duration("duration", time.Since(start)),
+				slog.Int("request_body_bytes", spyReader.bytesRead),
+				slog.Int("response_status", spyWriter.statusCode),
+				slog.Int("response_body_bytes", spyWriter.bytesWritten),
+			}
+
+			if logCtx.Username != "" {
+				attrs = append(attrs, slog.String("user", logCtx.Username))
+			}
+
+			logger.Info("Served request", attrs...)
 		})
 	}
 }

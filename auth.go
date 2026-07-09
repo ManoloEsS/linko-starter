@@ -43,6 +43,10 @@ func (s *server) authMiddleware(next http.Handler) http.Handler {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
+		if logCtx, ok := r.Context().Value(logContextKey).(*LogContext); ok {
+			logCtx.Username = username
+		}
+
 		r = r.WithContext(context.WithValue(r.Context(), UserContextKey, username))
 		next.ServeHTTP(w, r)
 	})
@@ -51,7 +55,7 @@ func (s *server) authMiddleware(next http.Handler) http.Handler {
 func (s *server) validatePassword(password, stored string) (bool, error) {
 	err := bcrypt.CompareHashAndPassword([]byte(stored), []byte(password))
 	if err == bcrypt.ErrMismatchedHashAndPassword {
-		return false, err
+		return false, nil
 	}
 	if err != nil {
 		return false, pkgerr.WithStack(err)
