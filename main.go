@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"flag"
@@ -12,9 +11,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ManoloEsS/linko/internal/build"
+	"github.com/ManoloEsS/linko/internal/build_config"
 	"github.com/ManoloEsS/linko/internal/linkoerr"
 	"github.com/ManoloEsS/linko/internal/store"
+	"github.com/lmittmann/tint"
+	"github.com/mattn/go-isatty"
+	"github.com/natefinch/lumberjack"
 	pkgerr "github.com/pkg/errors"
 )
 
@@ -52,8 +54,8 @@ func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir s
 	}
 	hostname, _ := os.Hostname()
 	logger = logger.With(
-		slog.String("git_sha", build.GitSHA),
-		slog.String("build_time", build.BuildTime),
+		slog.String("git_sha", build_config.GitSHA),
+		slog.String("build_time", build_config.BuildTime),
 		slog.String("env", os.Getenv("ENV")),
 		slog.String("hostname", hostname),
 	)
@@ -121,37 +123,52 @@ func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir s
 // }
 
 func initializeLogger(logFile string) (*slog.Logger, closeLogger, error) {
-	debugHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+	var (
+		handlers []slog.Handler
+		closers  []closeLogger
+	)
+
+	handlers = append(handlers, tint.NewHandler(os.Stderr, &tint.Options{
 		Level:       slog.LevelDebug,
 		ReplaceAttr: replaceAttr,
-	})
+		NoColor:     !(isatty.IsCygwinTerminal(os.Stderr.Fd()) || isatty.IsTerminal(os.Stderr.Fd())),
+	}))
 
-	file, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to open log file: %v\n", err)
-	}
-
-	bufferedWriter := bufio.NewWriterSize(file, 8192)
-	closeLogger := func() error {
-		err := bufferedWriter.Flush()
-		if err != nil {
-			return err
+	if logFile != "" {
+		logRotator := &lumberjack.Logger{
+			Filename:   logFile,
+			MaxSize:    1,
+			MaxAge:     28,
+			MaxBackups: 10,
+			LocalTime:  false,
+			Compress:   true,
 		}
-		file.Close()
-		return nil
+
+		handlers = append(handlers, slog.NewJSONHandler(logRotator, &slog.HandlerOptions{
+			Level:       slog.LevelInfo,
+			ReplaceAttr: replaceAttr,
+		}))
+
+		closers = append(closers, func() error {
+			err := logRotator.Close()
+			if err != nil {
+				return fmt.Errorf("failed to close log file: %w", err)
+			}
+			return nil
+		})
 	}
 
-	infoHandler := slog.NewJSONHandler(bufferedWriter, &slog.HandlerOptions{
-		Level:       slog.LevelInfo,
-		ReplaceAttr: replaceAttr,
-	})
+	close := func() error {
+		var errs []error
+		for _, closer := range closers {
+			errs = append(errs, closer())
+		}
+		return errors.Join(errs...)
+	}
 
-	logger := slog.New(slog.NewMultiHandler(
-		debugHandler,
-		infoHandler,
-	))
+	logger := slog.New(slog.NewMultiHandler(handlers...))
 
-	return logger, closeLogger, nil
+	return logger, close, nil
 }
 
 func replaceAttr(groups []string, a slog.Attr) slog.Attr {
