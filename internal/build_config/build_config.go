@@ -1,4 +1,4 @@
-package build
+package build_config
 
 // default build-time variables
 var (
