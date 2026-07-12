@@ -6,8 +6,11 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
+	"net/url"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 	"time"
 
@@ -19,6 +22,16 @@ import (
 	"github.com/natefinch/lumberjack"
 	pkgerr "github.com/pkg/errors"
 )
+
+var sensitiveKeys = []string{
+	"password",
+	"key",
+	"apikey",
+	"secret",
+	"pin",
+	"creditcardno",
+	"user",
+}
 
 type closeLogger func() error
 
@@ -172,6 +185,19 @@ func initializeLogger(logFile string) (*slog.Logger, closeLogger, error) {
 }
 
 func replaceAttr(groups []string, a slog.Attr) slog.Attr {
+	if slices.Contains(sensitiveKeys, a.Key) {
+		return slog.String(a.Key, "[REDACTED]")
+	}
+	if a.Value.Kind() == slog.KindString {
+		parsedUrl, _ := url.Parse(a.Value.String())
+		if parsedUrl != nil {
+			_, ok := parsedUrl.User.Password()
+			if ok {
+				parsedUrl.User = url.UserPassword(parsedUrl.User.Username(), "[REDACTED]")
+				return slog.String(a.Key, parsedUrl.String())
+			}
+		}
+	}
 	if a.Key == "error" {
 		err, ok := a.Value.Any().(error)
 		if !ok {
@@ -201,4 +227,19 @@ func errorAttrs(err error) []slog.Attr {
 	}
 
 	return errorAttrs
+}
+
+func redactIP(addr string) string {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		host = addr
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return host
+	}
+	if ip4 := ip.To4(); ip4 != nil {
+		return fmt.Sprintf("%d.%d.%d.x", ip4[0], ip4[1], ip4[2])
+	}
+	return ip.String()
 }
