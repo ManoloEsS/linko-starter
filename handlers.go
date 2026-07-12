@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -46,19 +47,19 @@ func (s *server) handlerShortenLink(w http.ResponseWriter, r *http.Request) {
 	}
 	u, err := url.Parse(longURL)
 	if err != nil || u.Scheme == "" || u.Host == "" {
-		httpError(r.Context(), w, http.StatusBadRequest, err)
+		httpError(r.Context(), w, http.StatusBadRequest, errors.New("invalid URL: must include scheme (http/https) and host"))
 		return
 	}
 	if err := checkDestination(longURL); err != nil {
-		httpError(r.Context(), w, http.StatusBadRequest, err)
+		httpError(r.Context(), w, http.StatusBadRequest, fmt.Errorf("invalid taget URL: %w", err))
 		return
 	}
 	shortCode, err := s.store.Create(r.Context(), longURL)
 	if err != nil {
-		httpError(r.Context(), w, http.StatusInternalServerError, errors.New("failed to shorten url"))
+		httpError(r.Context(), w, http.StatusInternalServerError, fmt.Errorf("failed to shorten URL: %w", err))
 		return
 	}
-	s.logger.Info("Successfully generated short code", "shortened_URL", shortCode, "long_URL", longURL)
+	s.logger.Info("Successfully generated short code", "short_code", shortCode, "long_url", longURL)
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
@@ -73,13 +74,13 @@ func (s *server) handlerRedirect(w http.ResponseWriter, r *http.Request) {
 		} else {
 			s.logger.Error("failed to lookup URL", "error", err)
 
-			httpError(r.Context(), w, http.StatusInternalServerError, err)
+			httpError(r.Context(), w, http.StatusInternalServerError, fmt.Errorf("internal server error: %w", err))
 		}
 		return
 	}
 	_, _ = bcrypt.GenerateFromPassword([]byte(longURL), bcrypt.DefaultCost)
 	if err := checkDestination(longURL); err != nil {
-		httpError(r.Context(), w, http.StatusBadGateway, err)
+		httpError(r.Context(), w, http.StatusBadGateway, errors.New("destination unavailable"))
 		return
 	}
 
@@ -93,9 +94,7 @@ func (s *server) handlerRedirect(w http.ResponseWriter, r *http.Request) {
 func (s *server) handlerListURLs(w http.ResponseWriter, r *http.Request) {
 	codes, err := s.store.List(r.Context())
 	if err != nil {
-		s.logger.Error("failed to list URLs", "error", err)
-
-		httpError(r.Context(), w, http.StatusInternalServerError, err)
+		httpError(r.Context(), w, http.StatusInternalServerError, fmt.Errorf("failed to list URLs: %w", err))
 		return
 	}
 

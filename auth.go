@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"net/http"
 
 	pkgerr "github.com/pkg/errors"
@@ -25,23 +25,21 @@ func (s *server) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
 		if !ok {
-			httpError(r.Context(), w, http.StatusUnauthorized, errors.New("unauthorized"))
+			httpError(r.Context(), w, http.StatusUnauthorized, fmt.Errorf("unauthorized"))
 			return
 		}
 		stored, exists := allowedUsers[username]
 		if !exists {
-			httpError(r.Context(), w, http.StatusUnauthorized, errors.New("unauthorized"))
+			httpError(r.Context(), w, http.StatusUnauthorized, fmt.Errorf("unauthorized"))
 			return
 		}
 		ok, err := s.validatePassword(password, stored)
 		if err != nil {
-			s.logger.Error("error validating password", "user", username, "error", err)
-
-			httpError(r.Context(), w, http.StatusInternalServerError, err)
+			httpError(r.Context(), w, http.StatusInternalServerError, fmt.Errorf("internal server error: %w", err))
 			return
 		}
 		if !ok {
-			httpError(r.Context(), w, http.StatusUnauthorized, err)
+			httpError(r.Context(), w, http.StatusUnauthorized, fmt.Errorf("unauthorized"))
 			return
 		}
 		if logCtx, ok := r.Context().Value(logContextKey).(*LogContext); ok {
