@@ -3,3 +3,6 @@ linko
 *~
 vendor/
 *.log
+
+*.pprof.txt
+*.prof
