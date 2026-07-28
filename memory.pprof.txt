@@ -1,0 +1,48 @@
+File: linko
+Build ID: de12a05addc16db63ee734f5324d49bbe97d8032
+Type: inuse_space
+Time: 2026-07-16 19:51:52 MDT
+Duration: 30.01s, Total samples = 2582.05kB 
+Showing nodes accounting for 532.88kB, 20.64% of 2582.05kB total
+      flat  flat%   sum%        cum   cum%
+ 1045.40kB 40.49% 40.49%  1045.40kB 40.49%  internal/bytealg.MakeNoZero
+ -512.56kB 19.85% 20.64%  -512.56kB 19.85%  compress/flate.newHuffmanEncoder (inline)
+  512.07kB 19.83% 40.47%   512.07kB 19.83%  net/url.parse
+ -512.02kB 19.83% 20.64%  -512.02kB 19.83%  net/textproto.NewReader (inline)
+         0     0% 20.64%  -512.56kB 19.85%  compress/flate.(*compressor).init
+         0     0% 20.64%  -512.56kB 19.85%  compress/flate.NewWriter (inline)
+         0     0% 20.64%  -512.56kB 19.85%  compress/flate.newHuffmanBitWriter (inline)
+         0     0% 20.64%  -512.56kB 19.85%  compress/gzip.(*Writer).Write
+         0     0% 20.64%   512.07kB 19.83%  github.com/lmittmann/tint.(*handler).Handle
+         0     0% 20.64%   512.07kB 19.83%  github.com/lmittmann/tint.(*handler).Handle.func1 (inline)
+         0     0% 20.64%   512.07kB 19.83%  github.com/lmittmann/tint.(*handler).appendAttr
+         0     0% 20.64%   512.07kB 19.83%  log/slog.(*Logger).Info
+         0     0% 20.64%   512.07kB 19.83%  log/slog.(*Logger).log
+         0     0% 20.64%   512.07kB 19.83%  log/slog.(*MultiHandler).Handle
+         0     0% 20.64%   512.07kB 19.83%  log/slog.Record.Attrs (inline)
+         0     0% 20.64%  1045.40kB 40.49%  main.(*server).handlerRedirect
+         0     0% 20.64%  -512.56kB 19.85%  main.newServer.(*server).authMiddleware.func5
+         0     0% 20.64%   532.83kB 20.64%  main.newServer.metricsMiddleware.func2
+         0     0% 20.64%  1044.91kB 40.47%  main.newServer.newServer.requestLogger.func1.func3
+         0     0% 20.64%  1044.91kB 40.47%  main.newServer.requestIdentifier.func4
+         0     0% 20.64%   512.07kB 19.83%  main.replaceAttr
+         0     0% 20.64%   532.83kB 20.64%  net/http.(*ServeMux).ServeHTTP
+         0     0% 20.64%  -512.02kB 19.83%  net/http.(*conn).readRequest
+         0     0% 20.64%   532.88kB 20.64%  net/http.(*conn).serve
+         0     0% 20.64%  1044.91kB 40.47%  net/http.HandlerFunc.ServeHTTP
+         0     0% 20.64%  -512.02kB 19.83%  net/http.newTextprotoReader
+         0     0% 20.64%  -512.02kB 19.83%  net/http.readRequest
+         0     0% 20.64%  1044.91kB 40.47%  net/http.serverHandler.ServeHTTP
+         0     0% 20.64%  -512.56kB 19.85%  net/http/pprof.Index
+         0     0% 20.64%  -512.56kB 19.85%  net/http/pprof.collectProfile
+         0     0% 20.64%  -512.56kB 19.85%  net/http/pprof.handler.ServeHTTP
+         0     0% 20.64%  -512.56kB 19.85%  net/http/pprof.handler.serveDeltaProfile
+         0     0% 20.64%   512.07kB 19.83%  net/url.Parse
+         0     0% 20.64%  -512.56kB 19.85%  runtime/pprof.(*Profile).WriteTo
+         0     0% 20.64%  -512.56kB 19.85%  runtime/pprof.(*profileBuilder).build
+         0     0% 20.64%  -512.56kB 19.85%  runtime/pprof.writeHeap
+         0     0% 20.64%  -512.56kB 19.85%  runtime/pprof.writeHeapInternal
+         0     0% 20.64%  -512.56kB 19.85%  runtime/pprof.writeHeapProto
+         0     0% 20.64%  1045.40kB 40.49%  strings.(*Builder).Grow
+         0     0% 20.64%  1045.40kB 40.49%  strings.(*Builder).grow
+         0     0% 20.64%  1045.40kB 40.49%  strings.Repeat
